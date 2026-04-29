@@ -135,25 +135,43 @@
       end
   end
 
-  for filepath in fs.glob("/usr/lib/lua/luci/controller/*.lua") or function() end do
+  local function scan_and_add(filepath)
       local content = fs.readfile(filepath)
-      if content then
-          for line in content:gmatch("[^\r\n]+") do
-              local parent, name = line:match('"admin"%s*,%s*"([^"]+)"%s*,%s*"([^"]+)"')
-              if (parent == "services" or parent == "modem") and name then
-                  local path = "admin/" .. parent .. "/" .. name
-                  if is_direct_child(path) and not seen[path] then
-                      local title = line:match('_%("([^"]+)"%)')
-                          or line:match('translate%("([^"]+)"%)')
-                      local order = tonumber(line:match(',%s*(%d+)%s*%)'))
-
-                      if title and title ~= "" then
-                          add_menu_stub(path, title, order)
-                      end
+      if not content then return end
+      for line in content:gmatch("[^\r\n]+") do
+          -- Improved regex to capture parent and name from entry({...})
+          local parent, name = line:match('entry%s*%(%s*{%s*["\']admin["\']%s*,%s*["\']([^"\']+)["\']%s*,%s*["\']([^"\']+)["\']')
+          if parent and name then
+              local path = "admin/" .. parent .. "/" .. name
+              if is_direct_child(path) and not seen[path] then
+                  local title = line:match('_%s*%(%s*["\']([^"\']+)["\']%s*%)')
+                      or line:match('translate%s*%(%s*["\']([^"\']+)["\']%s*%)')
+                      or line:match(',%s*["\']([^"\']+)["\']%s*,%s*%d+%s*%)') -- Fallback for literal title
+                  
+                  local order = tonumber(line:match(',%s*(%d+)%s*%)')) or 100
+                  if title and title ~= "" then
+                      add_menu_stub(path, title, order)
                   end
               end
           end
       end
+  end
+
+  -- Scan controllers recursively or in common paths
+  for _, dir in ipairs({"/usr/lib/lua/luci/controller/", "/usr/lib/lua/luci/controller/admin/"}) do
+      for filepath in fs.glob(dir .. "*.lua") or function() end do
+          scan_and_add(filepath)
+      end
+  end
+
+  -- Docker 强制检测逻辑 (只有存在相关文件时才添加按钮)
+  local has_docker = fs.access("/usr/lib/lua/luci/controller/dockerman.lua") or 
+                     fs.access("/usr/share/luci/menu.d/luci-app-dockerman.json") or
+                     fs.access("/usr/lib/lua/luci/controller/admin/docker.lua") or
+                     fs.access("/usr/lib/lua/luci/controller/docker.lua")
+
+  if has_docker and not seen["admin/docker/overview"] then
+      add_menu_stub("admin/docker/overview", "Docker 概览", 1100)
   end
 
   table.sort(dynamic_menus, function(a, b)

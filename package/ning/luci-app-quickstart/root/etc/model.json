@@ -1,0 +1,15 @@
+{
+  "model": "LiberNet AX6000",
+  "pcba": "AX6000-7PORT",
+  "vendor": "Custom",
+  "eth_count": 7,
+  "ports": [
+    {"label": "WAN", "speed": 2500, "name": "eth1"},
+    {"label": "LAN1", "speed": 2500, "name": "eth0"},
+    {"label": "LAN2", "speed": 1000, "name": "lan1"},
+    {"label": "LAN3", "speed": 1000, "name": "lan2"},
+    {"label": "LAN4", "speed": 1000, "name": "lan3"},
+    {"label": "LAN5", "speed": 1000, "name": "lan4"},
+    {"label": "LAN6", "speed": 1000, "name": "lan5"}
+  ]
+}

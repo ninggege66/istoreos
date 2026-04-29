@@ -452,7 +452,7 @@ small {
     overflow-x: auto;
     height: calc(100% - 3.5rem);
     position: fixed;
-    padding-top: 15px;
+    padding-top: 60px;
     box-shadow: 0 0px 4px rgb(0 0 0 / 8%);
 	/* transition: visibility 150ms, width 150ms; */
 }
@@ -762,7 +762,7 @@ span[data-indicator="uci-changes"] {
 }
 
 .main > .main-left > .nav > .slide > a[data-title="Status"]:before {
-    content: "\e6b8";
+    content: "\e604";
 }
 
 .main > .main-left > .nav > .slide > a[data-title="System"]:before {
@@ -798,15 +798,8 @@ span[data-indicator="uci-changes"] {
     position: relative;
 }
 
-.main > .main-left > .nav > .slide > a[data-title="Modem"]::before {
-    content: "";
-    display: inline-block;
-    width: 1.2rem;
-    height: 1.2rem;
-    left: -10px;
-    top: 1px;
-    position: relative;
-    background: url('/luci-static/design/images/modem.svg') center center / contain no-repeat;
+.main > .main-left > .nav > .slide > a[data-title="Modem"]:before {
+    content: "\e764";
 }
 
 .main .main-left .nav li.slide .menu[data-title="Statistics"]:before {
@@ -850,6 +843,25 @@ span[data-indicator="uci-changes"] {
 }
 .main > .main-left > .nav > li > a[data-title="Reboot"]:before {
     content: "\e004";
+}
+.main > .main-left > .nav > li > a[data-title="QuickStart"],
+.main > .main-left > .nav > li > a[data-title="RouterDog"],
+.main > .main-left > .nav > li > a[data-title="istorex"],
+.main > .main-left > .nav > li > a[data-title="iStoreX"] {
+    padding: 0.675rem 0 0.675rem 2.5rem;
+}
+
+.main > .main-left > .nav > li > a[data-title="QuickStart"]:before {
+    content: "\e6b8";
+}
+
+.main > .main-left > .nav > li > a[data-title="RouterDog"]:before {
+    content: "\e67e";
+}
+
+.main > .main-left > .nav > li > a[data-title="istorex"]:before,
+.main > .main-left > .nav > li > a[data-title="iStoreX"]:before {
+    content: "\e6b8";
 }
 
 .main > .main-left > .nav > .slide > .menu.active::after {
