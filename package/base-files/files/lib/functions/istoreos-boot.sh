@@ -110,6 +110,20 @@ get_overlay_partition()
 		log "No overlay partition in Docker"
 		return 1
 	}
+	
+	# FIT image boot support (fitrw is the overlay partition created by fitblk)
+	if [ -d "/sys/class/block/fitrw" ]; then
+		if [ ! -e "/dev/fitrw" ]; then
+			local dev_major_minor="$(cat /sys/class/block/fitrw/dev)"
+			local major="${dev_major_minor%%:*}"
+			local minor="${dev_major_minor##*:}"
+			mknod /dev/fitrw b "$major" "$minor"
+		fi
+		OVERLAY_DEV="/dev/fitrw"
+		log "FIT boot detected: using /dev/fitrw as overlay"
+		return 0
+	fi
+
 	_get_overlay_partition_default || _get_overlay_partition_fallback || {
 		log "Unable to determine overlay partition"
 		return 1

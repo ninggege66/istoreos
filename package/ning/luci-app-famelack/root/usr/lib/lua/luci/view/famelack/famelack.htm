@@ -1,0 +1,29 @@
+<%+header%>
+<style>
+    #famelack-iframe {
+        position: fixed;
+        border: none;
+        z-index: 100;
+    }
+</style>
+<iframe id="famelack-iframe" src="https://famelack.com" title="Famelack Live TV"></iframe>
+<script>
+(function() {
+    function adjust() {
+        var iframe = document.getElementById('famelack-iframe');
+        if (!iframe) return;
+        var menu = document.getElementById('mainmenu');
+        var topbar = document.getElementById('topbar') || document.querySelector('header') || document.querySelector('.header');
+        var topH = topbar ? topbar.offsetHeight : 0;
+        var leftW = (window.innerWidth > 768 && menu) ? menu.offsetWidth : 0;
+        iframe.style.top = topH + 'px';
+        iframe.style.left = leftW + 'px';
+        iframe.style.width = (window.innerWidth - leftW) + 'px';
+        iframe.style.height = (window.innerHeight - topH) + 'px';
+    }
+    document.addEventListener('DOMContentLoaded', adjust);
+    window.addEventListener('resize', adjust);
+    setTimeout(adjust, 300);
+})();
+</script>
+<%+footer%>

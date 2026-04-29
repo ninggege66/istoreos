@@ -1,0 +1,49 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: LiberNet <support@libernet.org>
+Date: Mon, 29 Apr 2024 00:00:00 +0800
+Subject: [PATCH] arm64: dts: rockchip: disable automatic fan control on Rock 5B
+
+Disable kernel automatic fan control to allow user-space control
+via luci-app-libernet-fan
+
+Signed-off-by: LiberNet <support@libernet.org>
+---
+ .../boot/dts/rockchip/rk3588-rock-5b.dts      | 33 -------------------
+ 1 file changed, 33 deletions(-)
+
+--- a/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts
+@@ -278,36 +278,3 @@
+ 		};
+ 	};
+ };
+-
+-&package_thermal {
+-	polling-delay = <1000>;
+-
+-	trips {
+-		package_fan0: package-fan0 {
+-			temperature = <55000>;
+-			hysteresis = <2000>;
+-			type = "active";
+-		};
+-
+-		package_fan1: package-fan1 {
+-			temperature = <65000>;
+-			hysteresis = <2000>;
+-			type = "active";
+-		};
+-	};
+-
+-	cooling-maps {
+-		map1 {
+-			trip = <&package_fan0>;
+-			cooling-device = <&fan THERMAL_NO_LIMIT 1>;
+-		};
+-
+-		map2 {
+-			trip = <&package_fan1>;
+-			cooling-device = <&fan 2 THERMAL_NO_LIMIT>;
+-		};
+-	};
+-};

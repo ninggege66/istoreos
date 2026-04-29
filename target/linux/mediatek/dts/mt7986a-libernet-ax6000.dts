@@ -1,0 +1,525 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+
+/dts-v1/;
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/gpio/gpio.h>
+
+#include <dt-bindings/clock/mt7986-clk.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+
+#include "mt7986a.dtsi"
+
+/ {
+	model = "LiberNet AX6000";
+	compatible = "libernet,ax6000", "mediatek,mt7986a";
+
+	aliases {
+		serial0 = &uart0;
+		label-mac-device = &gmac0;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+		bootargs-append = " root=/dev/fit0 rootwait pcie_aspm=off pcie_port_pm=off";
+		rootdisk-emmc = <&emmc_rootdisk>;
+	};
+
+	memory@40000000 {
+		reg = <0 0x40000000 0 0x40000000>;
+	};
+
+	reg_1p8v: regulator-1p8v {
+		compatible = "regulator-fixed";
+		regulator-name = "fixed-1.8V";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+
+	reg_3p3v: regulator-3p3v {
+		compatible = "regulator-fixed";
+		regulator-name = "fixed-3.3V";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+
+	reg_5v: regulator-5v {
+		compatible = "regulator-fixed";
+		regulator-name = "fixed-5V";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+
+	lte_power: regulator-lte-power {
+		compatible = "regulator-fixed";
+		regulator-name = "lte_power";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpios = <&pio 13 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+
+	keys {
+		compatible = "gpio-keys";
+
+		reset {
+			label = "reset";
+			linux,code = <KEY_RESTART>;
+			gpios = <&pio 14 GPIO_ACTIVE_LOW>;
+		};
+
+		wps {
+			label = "wps";
+			linux,code = <KEY_WPS_BUTTON>;
+			gpios = <&pio 17 GPIO_ACTIVE_LOW>;
+		};
+	};
+
+
+
+	fan: pwm-fan {
+		compatible = "pwm-fan";
+		#cooling-cells = <2>;
+		cooling-levels = <0 5 10 15 20 25 30 35 40 45 50 55 60 65 70 75 80 85 90 95 100 105 110 115 120 125 130 135 140 145 150 155 160 165 170 175 180 185 190 195 200 205 210 215 220 225 230 235 240 245 250 255>;
+		interrupt-parent = <&pio>;
+		interrupts = <15 IRQ_TYPE_EDGE_RISING>;
+		pulses-per-revolution = <2>;
+		pwms = <&pwm 0 25000>;
+		status = "okay";
+	};
+};
+
+&pwm {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pwm0_pins>;
+	status = "okay";
+};
+
+&pio {
+	mmc1_pins_default: mmc1-pins-default {
+		mux {
+			function = "emmc";
+			groups = "emmc_49";
+		};
+		conf-cmd-dat {
+			pins = "EMMC_DATA_0", "EMMC_DATA_1", "EMMC_DATA_2",
+			       "EMMC_DATA_3", "EMMC_CMD";
+			input-enable;
+			drive-strength = <4>;
+			mediatek,pull-up-adv = <1>;
+		};
+		conf-clk {
+			pins = "EMMC_CK";
+			drive-strength = <6>;
+			mediatek,pull-down-adv = <2>;
+		};
+	};
+
+	mmc1_pins_uhs: mmc1-uhs-pins {
+		mux {
+			function = "emmc";
+			groups = "emmc_49";
+		};
+		conf-cmd-dat {
+			pins = "EMMC_DATA_0", "EMMC_DATA_1", "EMMC_DATA_2",
+			       "EMMC_DATA_3", "EMMC_CMD";
+			input-enable;
+			drive-strength = <4>;
+			mediatek,pull-up-adv = <1>;
+		};
+		conf-clk {
+			pins = "EMMC_CK";
+			drive-strength = <6>;
+			mediatek,pull-down-adv = <2>;
+		};
+	};
+
+	soc {
+		mmc1: mmc@11240000 {
+			compatible = "mediatek,mt7986-mmc";
+			reg = <0 0x11240000 0 0x1000>,
+			      <0 0x11c70000 0 0x1000>;
+			interrupts = <GIC_SPI 170 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&topckgen CLK_TOP_EMMC_250M_SEL>,
+				 <&infracfg CLK_INFRA_MSDC_CK>,
+				 <&infracfg CLK_INFRA_MSDC_HCK_CK>;
+			clock-names = "source", "hclk", "source_cg";
+			pinctrl-names = "default", "state_uhs";
+			pinctrl-0 = <&mmc1_pins_default>;
+			pinctrl-1 = <&mmc1_pins_uhs>;
+			bus-width = <4>;
+			max-frequency = <200000000>;
+			no-mmc;
+			no-sdio;
+			non-removable;
+			vmmc-supply = <&reg_3p3v>;
+			vqmmc-supply = <&reg_3p3v>;
+			status = "okay";
+		};
+	};
+};
+
+&crypto {
+	status = "okay";
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&watchdog {
+	status = "okay";
+};
+
+&eth {
+	status = "okay";
+
+	gmac0: mac@0 {
+		compatible = "mediatek,eth-mac";
+		reg = <0>;
+		phy-mode = "2500base-x";
+
+		fixed-link {
+			speed = <2500>;
+			full-duplex;
+			pause;
+		};
+	};
+
+	gmac1: mac@1 {
+		compatible = "mediatek,eth-mac";
+		reg = <1>;
+		label = "lan6";
+		phy-mode = "2500base-x";
+		phy-handle = <&phy5>;
+		nvmem-cells = <&macaddr_factory_40 0>;
+		nvmem-cell-names = "mac-address";
+	};
+
+	mdio: mdio-bus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		reset-gpios = <&pio 7 GPIO_ACTIVE_LOW>;
+		reset-delay-us = <100000>;
+		reset-post-delay-us = <100000>;
+
+		phy5: phy@5 {
+			compatible = "ethernet-phy-ieee802.3-c45";
+			reg = <5>;
+		};
+
+		phy6: phy@6 {
+			compatible = "ethernet-phy-ieee802.3-c45";
+			reg = <6>;
+		};
+
+		switch: switch@1f {
+			compatible = "mediatek,mt7531";
+			reg = <31>;
+			reset-gpios = <&pio 5 GPIO_ACTIVE_HIGH>;
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					label = "lan1";
+				};
+
+				port@1 {
+					reg = <1>;
+					label = "lan2";
+				};
+
+				port@2 {
+					reg = <2>;
+					label = "lan3";
+				};
+
+				port@3 {
+					reg = <3>;
+					label = "lan4";
+				};
+
+				port@4 {
+					reg = <4>;
+					label = "lan5";
+				};
+
+				port@5 {
+					reg = <5>;
+					label = "wan";
+					phy-mode = "2500base-x";
+					phy-handle = <&phy6>;
+				};
+
+				port@6 {
+					reg = <6>;
+					ethernet = <&gmac0>;
+					phy-mode = "2500base-x";
+
+					fixed-link {
+						speed = <2500>;
+						full-duplex;
+						pause;
+					};
+				};
+			};
+		};
+	};
+};
+
+&mmc0 {
+	pinctrl-names = "default", "state_uhs";
+	pinctrl-0 = <&mmc0_pins_default>;
+	pinctrl-1 = <&mmc0_pins_uhs>;
+	bus-width = <8>;
+	max-frequency = <200000000>;
+	cap-mmc-highspeed;
+	mmc-hs200-1_8v;
+	mmc-hs400-1_8v;
+	hs400-ds-delay = <0x14014>;
+	vmmc-supply = <&reg_3p3v>;
+	vqmmc-supply = <&reg_1p8v>;
+	non-removable;
+	no-sd;
+	no-sdio;
+	status = "okay";
+
+	card@0 {
+		compatible = "mmc-card";
+		reg = <0>;
+
+		block {
+			compatible = "block-device";
+			partitions {
+				block-partition-factory {
+					partname = "factory";
+
+					nvmem-layout {
+						compatible = "fixed-layout";
+						#address-cells = <1>;
+						#size-cells = <1>;
+
+						eeprom_factory_0: eeprom@0 {
+								reg = <0x0000 0x1000>;
+							};
+
+							macaddr_factory_10: macaddr@10 {
+								compatible = "mac-base";
+								reg = <0x0010 0x0006>;
+								#nvmem-cell-cells = <1>;
+							};
+
+							macaddr_factory_18: macaddr@18 {
+								compatible = "mac-base";
+								reg = <0x0018 0x0006>;
+								#nvmem-cell-cells = <1>;
+							};
+
+							macaddr_factory_20: macaddr@20 {
+								compatible = "mac-base";
+								reg = <0x0020 0x0006>;
+								#nvmem-cell-cells = <1>;
+							};
+
+							macaddr_factory_28: macaddr@28 {
+								compatible = "mac-base";
+								reg = <0x0028 0x0006>;
+								#nvmem-cell-cells = <1>;
+							};
+
+							macaddr_factory_30: macaddr@30 {
+								compatible = "mac-base";
+								reg = <0x0030 0x0006>;
+								#nvmem-cell-cells = <1>;
+							};
+
+							macaddr_factory_38: macaddr@38 {
+								compatible = "mac-base";
+								reg = <0x0038 0x0006>;
+								#nvmem-cell-cells = <1>;
+							};
+
+							macaddr_factory_40: macaddr@40 {
+								compatible = "mac-base";
+								reg = <0x0040 0x0006>;
+								#nvmem-cell-cells = <1>;
+							};
+
+							macaddr_factory_a: macaddr@a {
+								compatible = "mac-base";
+								reg = <0x000a 0x0006>;
+								#nvmem-cell-cells = <1>;
+							};
+
+							macaddr_factory_4: macaddr@4 {
+								compatible = "mac-base";
+								reg = <0x0004 0x0006>;
+								#nvmem-cell-cells = <1>;
+							};
+					};
+				};
+
+				emmc_rootdisk: block-partition-production {
+					partname = "production";
+				};
+			};
+		};
+	};
+};
+
+&pcie {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie_pins>;
+	status = "okay";
+};
+
+&pcie_phy {
+	status = "okay";
+};
+
+&ssusb {
+	vusb33-supply = <&reg_3p3v>;
+	vbus-supply = <&reg_5v>;
+	status = "okay";
+};
+
+&usb_phy {
+	status = "okay";
+};
+
+&cpu_thermal {
+	/delete-node/ cooling-maps;
+};
+
+&cpu_trip_crit {
+	temperature = <100000>;
+};
+
+&cpu_trip_hot {
+	temperature = <85000>;
+};
+
+&cpu_trip_active_high {
+	temperature = <75000>;
+};
+
+&cpu_trip_active_low {
+	temperature = <55000>;
+};
+
+&wifi {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&wf_2g_5g_pins>;
+	nvmem-cells = <&eeprom_factory_0>;
+	nvmem-cell-names = "eeprom";
+};
+
+&pio {
+	pcie_pins: pcie-pins {
+		mux {
+			function = "pcie";
+			groups = "pcie_clk", "pcie_pereset";
+		};
+	};
+
+	mdio1_pins: mdio1-pins {
+		mux {
+			function = "eth";
+			groups = "mdio1";
+		};
+	};
+
+	pwm0_pins: pwm0-pins {
+		mux {
+			function = "pwm";
+			groups = "pwm0";
+		};
+	};
+
+	wf_2g_5g_pins: wf_2g_5g-pins {
+		mux {
+			function = "wifi";
+			groups = "wf_2g", "wf_5g";
+		};
+		conf {
+			pins = "WF0_HB1", "WF0_HB2", "WF0_HB3", "WF0_HB4",
+			       "WF0_HB0", "WF0_HB0_B", "WF0_HB5", "WF0_HB6",
+			       "WF0_HB7", "WF0_HB8", "WF0_HB9", "WF0_HB10",
+			       "WF0_TOP_CLK", "WF0_TOP_DATA", "WF1_HB1",
+			       "WF1_HB2", "WF1_HB3", "WF1_HB4", "WF1_HB0",
+			       "WF1_HB5", "WF1_HB6", "WF1_HB7", "WF1_HB8",
+			       "WF1_TOP_CLK", "WF1_TOP_DATA";
+			drive-strength = <4>;
+		};
+	};
+
+	mmc0_pins_default: mmc0-pins-default {
+		mux {
+			function = "emmc";
+			groups = "emmc_51";
+		};
+		conf-cmd-dat {
+			pins = "EMMC_DATA_0", "EMMC_DATA_1", "EMMC_DATA_2",
+			       "EMMC_DATA_3", "EMMC_DATA_4", "EMMC_DATA_5",
+			       "EMMC_DATA_6", "EMMC_DATA_7", "EMMC_CMD";
+			input-enable;
+			drive-strength = <4>;
+			mediatek,pull-up-adv = <1>;
+		};
+		conf-clk {
+			pins = "EMMC_CK";
+			drive-strength = <6>;
+			mediatek,pull-down-adv = <2>;
+		};
+		conf-ds {
+			pins = "EMMC_DSL";
+			mediatek,pull-down-adv = <2>;
+		};
+		conf-rst {
+			pins = "EMMC_RSTB";
+			drive-strength = <4>;
+			mediatek,pull-up-adv = <1>;
+		};
+	};
+
+	mmc0_pins_uhs: mmc0-uhs-pins {
+		mux {
+			function = "emmc";
+			groups = "emmc_51";
+		};
+		conf-cmd-dat {
+			pins = "EMMC_DATA_0", "EMMC_DATA_1", "EMMC_DATA_2",
+			       "EMMC_DATA_3", "EMMC_DATA_4", "EMMC_DATA_5",
+			       "EMMC_DATA_6", "EMMC_DATA_7", "EMMC_CMD";
+			input-enable;
+			drive-strength = <4>;
+			mediatek,pull-up-adv = <1>;
+		};
+		conf-clk {
+			pins = "EMMC_CK";
+			drive-strength = <6>;
+			mediatek,pull-down-adv = <2>;
+		};
+		conf-ds {
+			pins = "EMMC_DSL";
+			mediatek,pull-down-adv = <2>;
+		};
+		conf-rst {
+			pins = "EMMC_RSTB";
+			drive-strength = <4>;
+			mediatek,pull-up-adv = <1>;
+		};
+	};
+};
