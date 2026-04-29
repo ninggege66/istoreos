@@ -1,23 +1,23 @@
-#
-# Copyright (C) 2008-2014 The LuCI Team <luci@lists.subsignal.org>
-#
 # This is free software, licensed under the Apache License, Version 2.0 .
-#
 
 include $(TOPDIR)/rules.mk
 
-LUCI_TITLE:=IstoreX
+PKG_NAME:=luci-app-istorex
 PKG_VERSION:=0.6.6
-LUCI_DEPENDS:=+luci-app-quickstart +luci-app-store +luci-lib-taskd
-LUCI_EXTRA_DEPENDS:=luci-lib-taskd (>=1.0.15)
-LUCI_MINIFY_CSS:=0
-LUCI_MINIFY_JS:=0
+PKG_RELEASE:=3
+META_TITLE:=istorex
+META_TITLE.en:=istorex
+META_DEPENDS:=+luci-app-quickstart +luci-app-store +luci-lib-taskd
+PKGARCH:=all
+META_DESCRIPTION:=为iStoreOS适配的全新首页。
+META_DESCRIPTION.en:=A new homepage for iStoreOS.
+META_AUTHOR:=Carseason
+META_ARCH:=x86_64 aarch64
+META_TAGS:=net system
+META_LUCI_ENTRY:=/cgi-bin/luci/admin/istorex
+META_WEBSITE:=https://github.com/linkease/nas-packages-luci
+META_TUTORIAL:=https://doc.linkease.com/zh/guide/istore/software/istorex.html
 
-define Package/luci-app-istorex/conffiles
-/etc/config/istorex
-/www/luci-static/istorex/image/bg.gif
-endef
-
-include $(TOPDIR)/feeds/luci/luci.mk
+include ./meta.mk
 
 # call BuildPackage - OpenWrt buildroot signature

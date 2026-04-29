@@ -5,7 +5,7 @@
 #
 
 META_NAME?=$(notdir ${CURDIR})
-META_BASENAME?=$(patsubst app-meta-%,%,$(META_NAME))
+META_BASENAME?=$(patsubst luci-app-%,%,$(patsubst app-meta-%,%,$(META_NAME)))
 META_ARCH?=all
 META_FLAGS:=$(if $(realpath entry.sh), entrysh)
 
@@ -79,6 +79,14 @@ define Package/$(PKG_NAME)/install
 	else true; fi
 	if [ -f ./logo.png ]; then \
 		$(INSTALL_DATA) ./logo.png $(1)/www/luci-static/resources/app-icons/$(META_BASENAME).png ; \
+	fi;
+	if [ -d ./luasrc ]; then \
+		$(INSTALL_DIR) $(1)/usr/lib/lua/luci; \
+		cp -pR ./luasrc/* $(1)/usr/lib/lua/luci/; \
+	fi;
+	if [ -d ./htdocs ]; then \
+		$(INSTALL_DIR) $(1)/www; \
+		cp -pR ./htdocs/* $(1)/www/; \
 	fi;
 	if [ -f ./config.sh ]; then \
 		$(INSTALL_BIN) ./config.sh $(1)/usr/libexec/istorea/$(META_BASENAME).sh ; \
