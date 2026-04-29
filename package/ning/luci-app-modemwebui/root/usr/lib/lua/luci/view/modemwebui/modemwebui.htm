@@ -109,6 +109,15 @@
     document.addEventListener('DOMContentLoaded', () => {
         setIframeSrc();
         adjustIframePosition();
+        
+        // 启动心跳
+        function sendHeartbeat() {
+            fetch('<%=luci.dispatcher.build_url("admin", "modem", "modemwebui", "heartbeat")%>')
+                .then(response => response.json())
+                .catch(e => console.log("Heartbeat failed"));
+        }
+        sendHeartbeat();
+        setInterval(sendHeartbeat, 10000); // 每10秒发送一次
     });
 
     const menuElement = document.getElementById('mainmenu');
