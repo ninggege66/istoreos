@@ -2,32 +2,52 @@
 
 CFG=libernet-fan
 STATE=/tmp/libernet-fan.state
-PWM_PERIOD=40000
+CPU_STATE=/tmp/libernet-fan.cpu
 
-find_fan_device() {
+find_fan_pwm() {
+	for h in /sys/class/hwmon/hwmon*; do
+		if [ "$(cat "$h/name" 2>/dev/null)" = "pwmfan" ]; then
+			if [ -f "$h/pwm1" ]; then
+				echo "$h/pwm1"
+				return 0
+			fi
+		fi
+	done
+	# Fallback to cooling device
 	for c in /sys/class/thermal/cooling_device*; do
-		[ -d "$c" ] || continue
-		[ -f "$c/type" ] || continue
-		[ "$(cat "$c/type" 2>/dev/null)" = "pwm-fan" ] || continue
-		[ -w "$c/cur_state" ] || continue
-		echo "$c"
-		return 0
+		if [ "$(cat "$c/type" 2>/dev/null)" = "pwm-fan" ]; then
+			echo "$c/cur_state"
+			return 0
+		fi
 	done
 	return 1
 }
 
-fan_max_state() {
-	cdev="$1"
-	max="$(cat "$cdev/max_state" 2>/dev/null)"
-	case "$max" in
-		''|*[!0-9]*) max=255 ;;
+fan_max_val() {
+	target="$1"
+	case "$target" in
+		*cur_state)
+			cdev="${target%/cur_state}"
+			max="$(cat "$cdev/max_state" 2>/dev/null)"
+			[ -z "$max" ] && max=255
+			echo "$max"
+			;;
+		*)
+			echo 255
+			;;
 	esac
-	[ "$max" -le 0 ] 2>/dev/null && max=255
-	echo "$max"
 }
 
-setup_pwm() {
-	find_fan_device
+disable_kernel_thermal() {
+	for z in /sys/class/thermal/thermal_zone*; do
+		[ -f "$z/policy" ] || continue
+		echo "user_space" > "$z/policy" 2>/dev/null
+	done
+	for h in /sys/class/hwmon/hwmon*; do
+		if [ "$(cat "$h/name" 2>/dev/null)" = "pwmfan" ]; then
+			[ -f "$h/pwm1_enable" ] && echo 1 > "$h/pwm1_enable" 2>/dev/null
+		fi
+	done
 }
 
 set_pwm() {
@@ -35,12 +55,17 @@ set_pwm() {
 	[ -n "$pct" ] || pct=0
 	[ "$pct" -lt 0 ] 2>/dev/null && pct=0
 	[ "$pct" -gt 100 ] 2>/dev/null && pct=100
-	cdev="$(setup_pwm)" || return 1
-	max="$(fan_max_state "$cdev")"
-	state=$((max - (max * pct / 100)))
-	[ "$state" -lt 0 ] && state=0
-	[ "$state" -gt "$max" ] && state="$max"
-	echo "$state" > "$cdev/cur_state" 2>/dev/null || return 1
+	
+	target="$(find_fan_pwm)" || return 1
+	max="$(fan_max_val "$target")"
+	
+	# Inverted polarity: 100% = 0, 0% = max
+	val=$((max - (max * pct / 100)))
+	[ "$val" -lt 0 ] && val=0
+	[ "$val" -gt "$max" ] && val="$max"
+	
+	disable_kernel_thermal
+	echo "$val" > "$target" 2>/dev/null || return 1
 	echo "$pct" > "$STATE"
 }
 
@@ -92,6 +117,8 @@ calc_smart_pwm() {
 	echo "$next"
 }
 
+disable_kernel_thermal
+
 while true; do
 	enabled="$(uci -q get ${CFG}.main.enabled 2>/dev/null || echo 1)"
 	mode="$(uci -q get ${CFG}.main.mode 2>/dev/null || echo smart)"
@@ -109,25 +136,25 @@ while true; do
 		silent)
 			set_pwm "$(uci -q get ${CFG}.main.silent_pwm 2>/dev/null || echo 20)"
 			;;
-			turbo)
+		turbo)
 			set_pwm "$(uci -q get ${CFG}.main.turbo_pwm 2>/dev/null || echo 100)"
 			;;
-			manual)
+		manual)
 			set_pwm "$(uci -q get ${CFG}.main.manual_pwm 2>/dev/null || echo 35)"
 			;;
-			smart|*)
-				temp="$(read_temp)"
-				cur="$(cat "$STATE" 2>/dev/null || uci -q get ${CFG}.main.silent_pwm 2>/dev/null || echo 20)"
-				next="$(calc_smart_pwm \
-					"$temp" \
-					"$(uci -q get ${CFG}.main.smart_target_temp 2>/dev/null || echo 50)" \
-					"$(uci -q get ${CFG}.main.smart_min_pwm 2>/dev/null || echo 15)" \
-					"$(uci -q get ${CFG}.main.smart_max_pwm 2>/dev/null || echo 100)" \
-					"$(uci -q get ${CFG}.main.smart_kp 2>/dev/null || echo 3)" \
-					"$(uci -q get ${CFG}.main.smooth_step 2>/dev/null || echo 4)" \
-					"$cur")"
-				set_pwm "$next"
-				;;
+		smart|*)
+			temp="$(read_temp)"
+			cur="$(cat "$STATE" 2>/dev/null || uci -q get ${CFG}.main.silent_pwm 2>/dev/null || echo 20)"
+			next="$(calc_smart_pwm \
+				"$temp" \
+				"$(uci -q get ${CFG}.main.smart_target_temp 2>/dev/null || echo 50)" \
+				"$(uci -q get ${CFG}.main.smart_min_pwm 2>/dev/null || echo 15)" \
+				"$(uci -q get ${CFG}.main.smart_max_pwm 2>/dev/null || echo 100)" \
+				"$(uci -q get ${CFG}.main.smart_kp 2>/dev/null || echo 3)" \
+				"$(uci -q get ${CFG}.main.smooth_step 2>/dev/null || echo 4)" \
+				"$cur")"
+			set_pwm "$next"
+			;;
 	esac
 
 	sleep "$interval"
