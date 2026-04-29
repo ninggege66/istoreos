@@ -6,19 +6,6 @@ USE_PROCD=1
 SERVICE=/usr/libexec/libernet-fan-daemon
 
 start_service() {
-	# Disable kernel thermal control
-	for z in /sys/class/thermal/thermal_zone*; do
-		[ -f "$z/policy" ] || continue
-		echo "user_space" > "$z/policy" 2>/dev/null
-	done
-
-	# Set hwmon pwm to manual mode (1)
-	for h in /sys/class/hwmon/hwmon*; do
-		if [ "$(cat "$h/name" 2>/dev/null)" = "pwmfan" ]; then
-			[ -f "$h/pwm1_enable" ] && echo 1 > "$h/pwm1_enable" 2>/dev/null
-		fi
-	done
-
 	procd_open_instance
 	procd_set_param command "$SERVICE"
 	procd_set_param respawn 3600 5 5

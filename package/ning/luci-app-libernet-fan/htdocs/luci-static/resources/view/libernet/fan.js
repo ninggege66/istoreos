@@ -21,10 +21,9 @@ const DEFAULTS = {
 	silent_pwm: '15',
 	turbo_pwm: '100',
 	manual_pwm: '35',
-	smart_target_temp: '50',
+	smart_target_temp: '30',
 	smart_min_pwm: '15',
 	smart_max_temp: '80',
-	smart_kp: '3',
 	smooth_step: '4',
 	interval: '2'
 };
@@ -49,19 +48,18 @@ const callSetSpeed = rpc.declare({
 const callApply = rpc.declare({
 	object: 'libernet_fan',
 	method: 'apply',
-	params: {
-		enabled: true,
-		mode: true,
-		silent_pwm: true,
-		turbo_pwm: true,
-		manual_pwm: true,
-		smart_target_temp: true,
-		smart_min_pwm: true,
-		smart_max_temp: true,
-		smart_kp: true,
-		smooth_step: true,
-		interval: true
-	},
+	params: [
+		'enabled',
+		'mode',
+		'silent_pwm',
+		'turbo_pwm',
+		'manual_pwm',
+		'smart_target_temp',
+		'smart_min_pwm',
+		'smart_max_temp',
+		'smooth_step',
+		'interval'
+	],
 	expect: {}
 });
 
@@ -438,7 +436,19 @@ return view.extend({
 	},
 
 	applyConfigNow: function () {
-		return L.resolveDefault(callApply(this.readFormState()), null)
+		const data = this.readFormState();
+		return L.resolveDefault(callApply(
+			data.enabled,
+			data.mode,
+			data.silent_pwm,
+			data.turbo_pwm,
+			data.manual_pwm,
+			data.smart_target_temp,
+			data.smart_min_pwm,
+			data.smart_max_temp,
+			data.smooth_step,
+			data.interval
+		), null)
 			.then(L.bind(function () {
 				return this.pollStatus();
 			}, this));
@@ -531,7 +541,6 @@ return view.extend({
 			smart_target_temp: this.refs.smartTarget ? toInt(this.refs.smartTarget.value, 50) : toInt(this.state.smart_target_temp, 50),
 			smart_min_pwm: this.refs.smartMin ? toInt(this.refs.smartMin.value, 15) : toInt(this.state.smart_min_pwm, 15),
 			smart_max_temp: this.refs.smartMax ? toInt(this.refs.smartMax.value, 80) : toInt(this.state.smart_max_temp, 80),
-			smart_kp: this.refs.smartKp ? toInt(this.refs.smartKp.value, 3) : toInt(this.state.smart_kp, 3),
 			smooth_step: this.refs.smoothStep ? toInt(this.refs.smoothStep.value, 4) : toInt(this.state.smooth_step, 4),
 			interval: this.refs.interval ? toInt(this.refs.interval.value, 2) : toInt(this.state.interval, 2)
 		};
@@ -548,7 +557,6 @@ return view.extend({
 		this.state.smart_target_temp = String(clamp(data.smart_target_temp, 30, 90));
 		this.state.smart_min_pwm = String(clamp(data.smart_min_pwm, 0, 100));
 		this.state.smart_max_temp = String(clamp(data.smart_max_temp, 30, 100));
-		this.state.smart_kp = String(clamp(data.smart_kp, 1, 10));
 		this.state.smooth_step = String(clamp(data.smooth_step, 1, 20));
 		this.state.interval = String(clamp(data.interval, 1, 30));
 
@@ -576,7 +584,6 @@ return view.extend({
 		this.state.smart_target_temp = String(clamp(data.smart_target_temp, 30, 90));
 		this.state.smart_min_pwm = String(clamp(data.smart_min_pwm, 0, 100));
 		this.state.smart_max_temp = String(clamp(data.smart_max_temp, 30, 100));
-		this.state.smart_kp = String(clamp(data.smart_kp, 1, 10));
 		this.state.smooth_step = String(clamp(data.smooth_step, 1, 20));
 		this.state.interval = String(clamp(data.interval, 1, 30));
 		this.setPreviewFromConfig();
@@ -650,7 +657,7 @@ return view.extend({
 			E('div', { 'class': 'lf-hero-copy' }, [
 				E('div', { 'class': 'lf-breadcrumb' }, _('风扇控制面板')),
 				E('h2', { 'class': 'lf-title' }, _('LiberNet 风扇控制中心')),
-				E('p', { 'class': 'lf-description' }, _('默认智能模式会围绕 50°C 平滑调速，静音、极速和自定义模式可直接保存生效。')),
+				E('p', { 'class': 'lf-description' }, _('默认智能模式会围绕最低到最高温度进行智能线性变速，静音、极速和自定义模式可直接保存生效。')),
 				E('div', { 'class': 'lf-hero-meta' }, [
 					E('span', { 'class': 'lf-pill' }, _('设备：') + model),
 					E('span', { 'class': 'lf-pill' }, _('主机：') + hostname),
@@ -684,7 +691,7 @@ return view.extend({
 		const modeButtons = E('div', { 'class': 'lf-mode-grid' }, [
 			this.renderControlButton('silent', _('静音模式'), _('默认 15% 低噪运行'), 'silent'),
 			this.renderControlButton('turbo', _('极速模式'), _('100% 满速散热'), 'turbo'),
-			this.renderControlButton('smart', _('智能模式'), _('默认模式，50°C 到 80°C 平滑升速'), 'smart'),
+			this.renderControlButton('smart', _('智能模式'), _('默认模式，最低到最高温度之间智能变速'), 'smart'),
 			this.renderControlButton('manual', _('自定义'), _('手动滑条指定转速'), 'manual')
 		]);
 
@@ -776,20 +783,16 @@ return view.extend({
 					E('input', { 'type': 'number', 'min': '0', 'max': '100', 'step': '1', 'value': toInt(this.state.turbo_pwm, 100), 'id': 'lf-turbo-pwm' })
 				]),
 				E('label', {}, [
-					E('span', {}, _('智能目标温度(°C)')),
-					E('input', { 'type': 'number', 'min': '30', 'max': '90', 'step': '1', 'value': toInt(this.state.smart_target_temp, 50), 'id': 'lf-smart-target' })
+					E('span', {}, _('智能最低温度(°C)')),
+					E('input', { 'type': 'number', 'min': '20', 'max': '90', 'step': '1', 'value': toInt(this.state.smart_target_temp, 30), 'id': 'lf-smart-target' })
 				]),
 				E('label', {}, [
 					E('span', {}, _('智能最小转速(%)')),
 					E('input', { 'type': 'number', 'min': '0', 'max': '100', 'step': '1', 'value': toInt(this.state.smart_min_pwm, 15), 'id': 'lf-smart-min' })
 				]),
 				E('label', {}, [
-					E('span', {}, _('智能满速温度(°C)')),
-					E('input', { 'type': 'number', 'min': '30', 'max': '100', 'step': '1', 'value': toInt(this.state.smart_max_temp, 80), 'id': 'lf-smart-max' })
-				]),
-				E('label', {}, [
-					E('span', {}, _('平滑系数')),
-					E('input', { 'type': 'number', 'min': '1', 'max': '10', 'step': '1', 'value': toInt(this.state.smart_kp, 3), 'id': 'lf-smart-kp' })
+					E('span', {}, _('智能最高温度(°C)')),
+					E('input', { 'type': 'number', 'min': '30', 'max': '110', 'step': '1', 'value': toInt(this.state.smart_max_temp, 80), 'id': 'lf-smart-max' })
 				]),
 				E('label', {}, [
 					E('span', {}, _('平滑步进')),
@@ -807,7 +810,6 @@ return view.extend({
 		this.refs.smartTarget = advanced.querySelector('#lf-smart-target');
 		this.refs.smartMin = advanced.querySelector('#lf-smart-min');
 		this.refs.smartMax = advanced.querySelector('#lf-smart-max');
-		this.refs.smartKp = advanced.querySelector('#lf-smart-kp');
 		this.refs.smoothStep = advanced.querySelector('#lf-smooth-step');
 		this.refs.interval = advanced.querySelector('#lf-interval');
 
